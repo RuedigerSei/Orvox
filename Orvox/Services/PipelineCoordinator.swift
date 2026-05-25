@@ -133,9 +133,19 @@ actor PipelineCoordinator {
         let orderedWAVs = results.map { $0.wav }
 
         // ── 5. Build chapter markers ──────────────────────────
+        // Accumulate the duration of each chunk so we know the wall-clock
+        // start time of every chunk in the final concatenated audio.
+        var chunkStartTimes: [Double] = []
+        var runningTime: Double = 0
+        for wav in orderedWAVs {
+            chunkStartTimes.append(runningTime)
+            runningTime += M4AWriter.duration(of: wav)
+        }
+
         let chapterMarkers: [ChapterMarker] = chunks.compactMap { chunk in
             guard let title = chunk.chapterTitle else { return nil }
-            return ChapterMarker(title: title, timestamp: 0, chunkIndex: chunk.index)
+            let ts = chunk.index < chunkStartTimes.count ? chunkStartTimes[chunk.index] : 0
+            return ChapterMarker(title: title, timestamp: ts, chunkIndex: chunk.index)
         }
 
         // ── 6. Encode to M4A ──────────────────────────────────

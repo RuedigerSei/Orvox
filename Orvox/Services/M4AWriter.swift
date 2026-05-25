@@ -173,6 +173,22 @@ struct M4AWriter {
         try lines.joined(separator: "\n").write(to: csvURL, atomically: true, encoding: .utf8)
     }
 
+    /// Returns the playback duration of a WAV blob by reading its RIFF header.
+    static func duration(of wavData: Data) -> TimeInterval {
+        let header = parseWAVHeader(wavData)
+        let pcmBytes: Int
+        if let offset = findChunk(tag: "data", in: wavData) {
+            pcmBytes = chunkSize(tag: "data", in: wavData, bodyStart: offset)
+        } else {
+            guard wavData.count > 44 else { return 0 }
+            let sz: Int32 = wavData.withUnsafeBytes { $0.load(fromByteOffset: 40, as: Int32.self) }
+            pcmBytes = Int(sz)
+        }
+        let bytesPerSecond = Int(header.sampleRate) * Int(header.channels) * Int(header.bitsPerSample) / 8
+        guard bytesPerSecond > 0 else { return 0 }
+        return Double(pcmBytes) / Double(bytesPerSecond)
+    }
+
     // MARK: - WAV helpers
 
     private struct WAVHeader {
