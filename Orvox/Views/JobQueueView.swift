@@ -173,9 +173,7 @@ struct JobRowView: View {
                         Text("· Chunk \(job.chunksCompleted)/\(job.chunksTotal)")
                     }
                     Spacer()
-                    if let start = job.startedAt {
-                        ElapsedTimerText(start: start)
-                    }
+                    ElapsedTimerText()
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -262,16 +260,14 @@ struct JobRowView: View {
 // MARK: - Elapsed timer
 
 private struct ElapsedTimerText: View {
-    let start: Date
     @State private var elapsed: Int = 0
 
     var body: some View {
         Text(formatted)
             .task {
-                elapsed = max(0, Int(Date().timeIntervalSince(start)))
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .seconds(1))
-                    elapsed = max(0, Int(Date().timeIntervalSince(start)))
+                    elapsed += 1
                 }
             }
     }
