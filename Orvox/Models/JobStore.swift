@@ -24,6 +24,9 @@ final class JobStore {
     func updateStatus(id: UUID, status: JobStatus, progress: Double? = nil,
                       outputURL: URL? = nil, errorMessage: String? = nil) {
         guard let idx = jobs.firstIndex(where: { $0.id == id }) else { return }
+        if status == .converting && jobs[idx].status != .converting {
+            jobs[idx].startedAt = Date()
+        }
         jobs[idx].status = status
         if let p = progress      { jobs[idx].progress     = p }
         if let u = outputURL     { jobs[idx].outputURL    = u }
@@ -45,8 +48,7 @@ final class JobStore {
 
     func markStarted(id: UUID, chunksTotal: Int) {
         guard let idx = jobs.firstIndex(where: { $0.id == id }) else { return }
-        jobs[idx].startedAt      = Date()
-        jobs[idx].chunksTotal    = chunksTotal
+        jobs[idx].chunksTotal     = chunksTotal
         jobs[idx].chunksCompleted = 0
     }
 

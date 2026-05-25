@@ -149,6 +149,14 @@ struct JobRowView: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Spacer()
+                if job.status == .converting {
+                    Button("Cancel") {
+                        Task { await PipelineCoordinator.shared.cancel(jobID: job.id) }
+                    }
+                    .buttonStyle(.borderless)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                }
                 StatusBadge(status: job.status)
             }
 
@@ -211,14 +219,6 @@ struct JobRowView: View {
                     Button("Retry") { retry(job) }
                         .buttonStyle(.borderless)
                         .font(.caption)
-                }
-                if job.status == .converting {
-                    Button("Cancel") {
-                        Task { await PipelineCoordinator.shared.cancel(jobID: job.id) }
-                    }
-                    .buttonStyle(.borderless)
-                    .font(.caption)
-                    .foregroundStyle(.red)
                 }
             }
         }
