@@ -1,0 +1,34 @@
+# Xcode
+*.xcuserstate
+xcuserdata/
+DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+
+# Build artifacts
+build/
+*.o
+*.d
+
+# Python venv
+tts_venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Hugging Face model cache (downloaded at runtime, not committed)
+# ~/.cache/huggingface is outside the project tree anyway
+
+# Swift Package Manager
+.build/
+*.resolved
+
+# Crash logs
+*.crash
