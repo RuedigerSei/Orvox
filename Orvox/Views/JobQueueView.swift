@@ -174,9 +174,7 @@ struct JobRowView: View {
                     }
                     Spacer()
                     if let start = job.startedAt {
-                        TimelineView(.periodic(from: start, by: 1)) { _ in
-                            Text(elapsedString(since: start))
-                        }
+                        ElapsedTimerText(start: start)
                     }
                 }
                 .font(.caption)
@@ -258,6 +256,28 @@ struct JobRowView: View {
         updated.progress = 0
         updated.errorMessage = nil
         JobStore.shared.update(updated)
+    }
+}
+
+// MARK: - Elapsed timer
+
+private struct ElapsedTimerText: View {
+    let start: Date
+    @State private var elapsed: Int = 0
+
+    var body: some View {
+        Text(formatted)
+            .task {
+                elapsed = max(0, Int(Date().timeIntervalSince(start)))
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(1))
+                    elapsed = max(0, Int(Date().timeIntervalSince(start)))
+                }
+            }
+    }
+
+    private var formatted: String {
+        elapsed < 60 ? "\(elapsed)s" : String(format: "%d:%02d", elapsed / 60, elapsed % 60)
     }
 }
 
