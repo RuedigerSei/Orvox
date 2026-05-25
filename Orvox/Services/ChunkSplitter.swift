@@ -26,6 +26,7 @@ struct ChunkSplitter {
             if !combined.isEmpty {
                 result.append(TextChunk(index: chunkIndex, text: combined, chapterTitle: currentChapterTitle))
                 chunkIndex += 1
+                currentChapterTitle = nil  // only the first chunk of each chapter carries the title
             }
             currentParts = []
             currentTokenCount = 0
