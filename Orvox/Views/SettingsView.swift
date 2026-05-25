@@ -22,6 +22,8 @@ struct SettingsView: View {
         BuiltInVoice(rawValue: defaultBuiltInVoiceName)
     }
 
+    private let voiceGridColumns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
+
     var body: some View {
         Form {
             // ── Server ──────────────────────────────────────────
@@ -76,9 +78,8 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
-                LazyVGrid(columns: columns, spacing: 8) {
-                    VoiceCard(
+                LazyVGrid(columns: voiceGridColumns, spacing: 8) {
+                    BuiltInVoiceCard(
                         name: "Bundled Clone",
                         description: "Built-in reference recording",
                         language: "—",
@@ -86,7 +87,7 @@ struct SettingsView: View {
                     ) { defaultBuiltInVoiceName = "" }
 
                     ForEach(BuiltInVoice.allCases) { voice in
-                        VoiceCard(
+                        BuiltInVoiceCard(
                             name: voice.displayName,
                             description: voice.voiceDescription,
                             language: voice.nativeLanguage,
@@ -155,7 +156,7 @@ struct SettingsView: View {
 
 // MARK: - Voice card
 
-private struct VoiceCard: View {
+private struct BuiltInVoiceCard: View {
     let name: String
     let description: String
     let language: String
@@ -176,7 +177,7 @@ private struct VoiceCard: View {
                     .fixedSize(horizontal: false, vertical: true)
                 Text(language)
                     .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(isSelected ? .white.opacity(0.7) : .tertiary)
+                    .foregroundStyle(isSelected ? Color.white.opacity(0.7) : Color.secondary.opacity(0.6))
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
