@@ -1,21 +1,25 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @AppStorage("serverURL")        private var serverURL        = "http://localhost:11435"
-    @AppStorage("modelSize")        private var modelSizeRaw     = ModelSize.quality.rawValue
-    @AppStorage("concurrentChunks") private var concurrentChunks = 3
-    @AppStorage("defaultPreset")    private var defaultPresetRaw = AudioPreset.audiobook.rawValue
-    @AppStorage("outputFolder")     private var outputFolder     = ""
+    @AppStorage("serverURL")             private var serverURL             = "http://localhost:11435"
+    @AppStorage("modelSize")             private var modelSizeRaw          = ModelSize.quality.rawValue
+    @AppStorage("concurrentChunks")      private var concurrentChunks      = 3
+    @AppStorage("defaultPreset")         private var defaultPresetRaw      = AudioPreset.audiobook.rawValue
+    @AppStorage("outputFolder")          private var outputFolder          = ""
+    @AppStorage("defaultBuiltInVoiceName") private var defaultBuiltInVoiceName = ""
 
     @State private var serverStatus: ServerStatus = .unknown
     @State private var inferenceDevice: String? = nil
     @State private var isCheckingServer = false
 
     private var modelSize: ModelSize {
-        get { ModelSize(rawValue: modelSizeRaw) ?? .quality }
+        ModelSize(rawValue: modelSizeRaw) ?? .quality
     }
     private var defaultPreset: AudioPreset {
-        get { AudioPreset(rawValue: defaultPresetRaw) ?? .audiobook }
+        AudioPreset(rawValue: defaultPresetRaw) ?? .audiobook
+    }
+    private var selectedBuiltInVoice: BuiltInVoice? {
+        BuiltInVoice(rawValue: defaultBuiltInVoiceName)
     }
 
     var body: some View {
@@ -64,6 +68,33 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+            }
+
+            // ── Default Voice ────────────────────────────────────
+            Section("Default Voice") {
+                Text("Used when a job has no custom voice profile. All voices are cross-lingual.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
+                LazyVGrid(columns: columns, spacing: 8) {
+                    VoiceCard(
+                        name: "Bundled Clone",
+                        description: "Built-in reference recording",
+                        language: "—",
+                        isSelected: selectedBuiltInVoice == nil
+                    ) { defaultBuiltInVoiceName = "" }
+
+                    ForEach(BuiltInVoice.allCases) { voice in
+                        VoiceCard(
+                            name: voice.displayName,
+                            description: voice.voiceDescription,
+                            language: voice.nativeLanguage,
+                            isSelected: selectedBuiltInVoice == voice
+                        ) { defaultBuiltInVoiceName = voice.rawValue }
+                    }
+                }
+                .padding(.vertical, 4)
             }
 
             // ── Concurrency ──────────────────────────────────────
@@ -120,4 +151,43 @@ struct SettingsView: View {
     }
 
     enum ServerStatus { case unknown, ok, error }
+}
+
+// MARK: - Voice card
+
+private struct VoiceCard: View {
+    let name: String
+    let description: String
+    let language: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(name)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(isSelected ? .white : .primary)
+                    .lineLimit(1)
+                Text(description)
+                    .font(.system(size: 10))
+                    .foregroundStyle(isSelected ? .white.opacity(0.85) : .secondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(language)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(isSelected ? .white.opacity(0.7) : .tertiary)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(8)
+            .background(isSelected ? Color.accentColor : Color(nsColor: .controlBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 7))
+            .overlay(
+                RoundedRectangle(cornerRadius: 7)
+                    .strokeBorder(isSelected ? Color.accentColor : Color(nsColor: .separatorColor), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
 }

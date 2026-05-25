@@ -30,6 +30,7 @@
 		C6C2927822E65E423D29A43B /* DropZoneRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91AF37D1A83ECCD5E61746C6 /* DropZoneRow.swift */; };
 		C75C3694046221ABD980B93A /* VoiceProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = E930A60222DAC3CF36AD40E0 /* VoiceProfile.swift */; };
 		CFC73A3B49D8B6557CFC18B8 /* Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31092CCDAD11D8E5E57A8D05 /* Job.swift */; };
+		D5CF1BAB58F67D295A3050C9 /* BuiltInVoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E2813885BDB12F78C998872 /* BuiltInVoice.swift */; };
 		D7198A1C8C53BC1D6558E43D /* TTSClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FEEC2351059BBCAD30B7470 /* TTSClient.swift */; };
 		E96A25EF24C0E015DAEE412C /* PDFKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7B5627E82411768ACE720DC8 /* PDFKit.framework */; };
 		ECB650CE7744400C63B0C9B3 /* tts_server in Resources */ = {isa = PBXBuildFile; fileRef = 9CCEC6C670EF1FA773EAB431 /* tts_server */; };
@@ -42,6 +43,7 @@
 /* Begin PBXFileReference section */
 		0939235FFD780A5B54AD4C17 /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
 		115537B717BC6527060F01A6 /* M4AWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = M4AWriter.swift; sourceTree = "<group>"; };
+		1E2813885BDB12F78C998872 /* BuiltInVoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuiltInVoice.swift; sourceTree = "<group>"; };
 		236D3A9311E2F90C821F7F36 /* OutputFilesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputFilesView.swift; sourceTree = "<group>"; };
 		31092CCDAD11D8E5E57A8D05 /* Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Job.swift; sourceTree = "<group>"; };
 		33C1725380CE53A02C3840EF /* VoiceLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceLibraryView.swift; sourceTree = "<group>"; };
@@ -154,6 +156,7 @@
 			isa = PBXGroup;
 			children = (
 				7C62D302B81A0850B7863E68 /* AudioPreset.swift */,
+				1E2813885BDB12F78C998872 /* BuiltInVoice.swift */,
 				31092CCDAD11D8E5E57A8D05 /* Job.swift */,
 				3B52E8B4F22639BE24F29D67 /* JobStore.swift */,
 				8BA41B51ED4A8816F9AB6019 /* ModelSize.swift */,
@@ -219,7 +222,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 2650;
+				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					174B3229BB73A5F5A110CE35 = {
 						DevelopmentTeam = "";
@@ -265,6 +268,7 @@
 			files = (
 				768171F7932ECC221C940323 /* AppDelegate.swift in Sources */,
 				93A55C742AECAF1251994BE2 /* AudioPreset.swift in Sources */,
+				D5CF1BAB58F67D295A3050C9 /* BuiltInVoice.swift in Sources */,
 				0F0849CAF78EBF9D9EF3F2D8 /* ChunkSplitter.swift in Sources */,
 				6F9BF66EE2AAEDAE368DA8A3 /* ContentView.swift in Sources */,
 				F633B73DFF89EC7753180258 /* ConvertView.swift in Sources */,
@@ -327,13 +331,11 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -347,7 +349,6 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 6.0;
@@ -389,13 +390,11 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -416,7 +415,6 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 6.0;
@@ -428,7 +426,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEAD_CODE_STRIPPING = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
 				INFOPLIST_FILE = Orvox/Info.plist;
@@ -449,7 +446,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEAD_CODE_STRIPPING = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
 				INFOPLIST_FILE = Orvox/Info.plist;
