@@ -5,15 +5,28 @@ struct JobQueueView: View {
     @State private var voiceStore = VoiceProfileStore.shared
     @State private var selection: Set<UUID> = []
     @State private var isConverting = false
+    @State private var selectedPreset: AudioPreset = {
+        let raw = UserDefaults.standard.string(forKey: "defaultPreset") ?? AudioPreset.audiobook.rawValue
+        return AudioPreset(rawValue: raw) ?? .audiobook
+    }()
+    @State private var selectedVoiceID: UUID? = nil
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            // ── Drop zone ──────────────────────────────────────────
+            DropZoneRow { urls in addFiles(urls: urls) }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 10)
+
+            // ── Job list ───────────────────────────────────────────
             if store.jobs.isEmpty {
                 ContentUnavailableView(
                     "No Jobs Yet",
                     systemImage: "list.bullet.clipboard",
-                    description: Text("Add files in the New Job view to start converting.")
+                    description: Text("Drop files above to start converting.")
                 )
+                .frame(maxHeight: .infinity)
             } else {
                 List(Array(store.jobs.reversed()), id: \.id, selection: $selection) { job in
                     JobRowView(job: job)
@@ -21,6 +34,34 @@ struct JobQueueView: View {
                 }
                 .listStyle(.plain)
             }
+
+            Divider()
+
+            // ── Bottom controls ────────────────────────────────────
+            HStack(spacing: 10) {
+                Picker("", selection: $selectedPreset) {
+                    ForEach(AudioPreset.allCases) { p in
+                        Text(p.displayName).tag(p)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 230)
+                .labelsHidden()
+
+                Picker("", selection: $selectedVoiceID) {
+                    Text("Voice: Default").tag(Optional<UUID>(nil))
+                    Divider()
+                    ForEach(voiceStore.profiles.filter { !$0.isBuiltIn }) { p in
+                        Text(p.name).tag(Optional(p.id))
+                    }
+                }
+                .frame(width: 180)
+                .labelsHidden()
+
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
         }
         .navigationTitle("Job Queue")
         .toolbar {
@@ -45,20 +86,24 @@ struct JobQueueView: View {
 
     // MARK: - Derived state
 
-    /// Selected IDs whose jobs are not currently converting (safe to delete).
     private var deletableSelection: [UUID] {
         selection.filter { id in
             store.jobs.first { $0.id == id }?.status != .converting
         }
     }
 
-    /// If rows are selected, convert only selected ready jobs; else convert all ready jobs.
     private var readyJobsToConvert: [Job] {
         let ids: Set<UUID> = selection.isEmpty ? Set(store.jobs.map(\.id)) : selection
         return store.jobs.filter { ids.contains($0.id) && $0.status == .ready }
     }
 
     // MARK: - Actions
+
+    private func addFiles(urls: [URL]) {
+        for url in urls {
+            store.add(Job(inputURL: url, preset: selectedPreset, voiceProfileID: selectedVoiceID))
+        }
+    }
 
     private func deleteSelected() {
         deletableSelection.forEach { store.remove(id: $0) }
@@ -129,7 +174,7 @@ struct JobRowView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
-            // Show frozen elapsed time for finished jobs
+
             if (job.status == .done || job.status == .failed),
                let start = job.startedAt, let finish = job.finishedAt {
                 Text("Took \(elapsedString(from: start, to: finish))")
