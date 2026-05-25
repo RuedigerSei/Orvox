@@ -45,6 +45,7 @@ struct VoiceLibraryView: View {
             do {
                 let wav = try await TTSClient.shared.synthesize(
                     text: sentence,
+                    speaker: nil,
                     referenceAudioPath: refPath,
                     preset: .audiobook
                 )
