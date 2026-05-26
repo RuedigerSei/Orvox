@@ -2,7 +2,6 @@ import Foundation
 
 private struct SynthesizeBody: Encodable {
     let text: String
-    let speaker: String?
     let reference_audio_path: String?
     let preset: String
 }
@@ -24,7 +23,7 @@ actor TTSClient {
 
     private init() {}
 
-    func synthesize(text: String, speaker: String?, referenceAudioPath: String?, preset: AudioPreset) async throws -> Data {
+    func synthesize(text: String, referenceAudioPath: String?, preset: AudioPreset) async throws -> Data {
         let base = serverBaseURL()
         guard let url = URL(string: "\(base)/synthesize") else { throw TTSError.invalidURL }
 
@@ -32,7 +31,7 @@ actor TTSClient {
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try JSONEncoder().encode(
-            SynthesizeBody(text: text, speaker: speaker, reference_audio_path: referenceAudioPath, preset: preset.rawValue)
+            SynthesizeBody(text: text, reference_audio_path: referenceAudioPath, preset: preset.rawValue)
         )
 
         let (data, response) = try await session.data(for: req)

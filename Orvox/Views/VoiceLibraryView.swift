@@ -17,7 +17,7 @@ struct VoiceLibraryView: View {
                         profile: profile,
                         isTesting: testingID == profile.id,
                         onTest: { testVoice(profile) },
-                        onDelete: profile.isBuiltIn ? nil : { store.remove(id: profile.id) }
+                        onDelete: { store.remove(id: profile.id) }
                     )
                 }
 
@@ -45,7 +45,6 @@ struct VoiceLibraryView: View {
             do {
                 let wav = try await TTSClient.shared.synthesize(
                     text: sentence,
-                    speaker: nil,
                     referenceAudioPath: refPath,
                     preset: .audiobook
                 )
@@ -74,23 +73,19 @@ struct VoiceCard: View {
             HStack {
                 ZStack {
                     Circle()
-                        .fill(profile.isBuiltIn ? Color.accentColor.opacity(0.15) : Color.purple.opacity(0.15))
+                        .fill(Color.purple.opacity(0.15))
                         .frame(width: 36, height: 36)
-                    Text(profile.isBuiltIn ? "🤖" : "🎙️")
+                    Text("🎙️")
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(profile.name)
                         .font(.system(size: 13, weight: .semibold))
-                    Text(profile.isBuiltIn ? "Built-in · Neural" : durationLabel)
+                    Text(durationLabel)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                if profile.isBuiltIn {
-                    badgeLabel("Default", color: .green)
-                } else {
-                    badgeLabel("Cloned", color: .purple)
-                }
+                badgeLabel("Cloned", color: .purple)
             }
 
             WaveformView(profile: profile)
@@ -119,7 +114,7 @@ struct VoiceCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(profile.isBuiltIn ? Color.clear : Color.purple.opacity(0.4), lineWidth: 1)
+                .stroke(Color.purple.opacity(0.4), lineWidth: 1)
         )
     }
 
@@ -150,7 +145,7 @@ struct WaveformView: View {
             HStack(alignment: .center, spacing: 2) {
                 ForEach(bars.indices, id: \.self) { i in
                     RoundedRectangle(cornerRadius: 1)
-                        .fill(profile.isBuiltIn ? Color.accentColor : Color.purple)
+                        .fill(Color.purple)
                         .opacity(0.7)
                         .frame(width: 2, height: bars[i] * geo.size.height)
                 }

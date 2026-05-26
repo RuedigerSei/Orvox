@@ -9,7 +9,10 @@ struct JobQueueView: View {
         let raw = UserDefaults.standard.string(forKey: "defaultPreset") ?? AudioPreset.audiobook.rawValue
         return AudioPreset(rawValue: raw) ?? .audiobook
     }()
-    @State private var selectedVoiceID: UUID? = nil
+    @State private var selectedVoiceID: UUID? = {
+        let stored = UserDefaults.standard.string(forKey: "defaultVoiceProfileID") ?? ""
+        return stored.isEmpty ? nil : UUID(uuidString: stored)
+    }()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -52,7 +55,7 @@ struct JobQueueView: View {
                 Picker("", selection: $selectedVoiceID) {
                     Text("Voice: Default").tag(Optional<UUID>(nil))
                     Divider()
-                    ForEach(voiceStore.profiles.filter { !$0.isBuiltIn }) { p in
+                    ForEach(voiceStore.profiles) { p in
                         Text(p.name).tag(Optional(p.id))
                     }
                 }
@@ -151,8 +154,7 @@ struct JobRowView: View {
            let profile = voiceStore.profiles.first(where: { $0.id == vid }) {
             return profile.name
         }
-        let builtIn = UserDefaults.standard.string(forKey: "defaultBuiltInVoiceName") ?? ""
-        return builtIn.isEmpty ? "Default" : builtIn
+        return "Default"
     }
 
     var body: some View {

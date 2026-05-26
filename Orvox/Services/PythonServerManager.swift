@@ -154,8 +154,7 @@ final class PythonServerManager: @unchecked Sendable {
 
         let existing = env["PYTHONPATH"] ?? ""
         env["PYTHONPATH"] = existing.isEmpty ? serverDir.path : "\(serverDir.path):\(existing)"
-        env["TTS_PORT"]     = "\(port)"
-        env["TTS_BACKEND"]  = UserDefaults.standard.string(forKey: "ttsBackend") ?? "mlx"
+        env["TTS_PORT"] = "\(port)"
         return env
     }
 

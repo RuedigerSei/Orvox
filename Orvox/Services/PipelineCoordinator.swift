@@ -59,13 +59,6 @@ actor PipelineCoordinator {
         let preset = job.preset
         let total  = chunks.count
 
-        // Built-in speaker: used only when the job has no custom voice profile.
-        let builtInSpeaker: String? = {
-            guard voiceProfileURL == nil else { return nil }
-            let name = UserDefaults.standard.string(forKey: "defaultBuiltInVoiceName") ?? ""
-            return name.isEmpty ? nil : name
-        }()
-
         await MainActor.run { JobStore.shared.markStarted(id: jobID, chunksTotal: total) }
 
         var results: [(index: Int, wav: Data)] = []
@@ -113,7 +106,6 @@ actor PipelineCoordinator {
                     let chunkIndex = chunk.index
                     let text       = chunk.text
                     let refPath    = voiceProfileURL?.path
-                    let speaker    = builtInSpeaker
                     let wordCount  = text.split(separator: " ").count
 
                     group.addTask {
@@ -122,7 +114,6 @@ actor PipelineCoordinator {
                         do {
                             let wav = try await TTSClient.shared.synthesize(
                                 text: text,
-                                speaker: speaker,
                                 referenceAudioPath: refPath,
                                 preset: preset
                             )
@@ -136,7 +127,6 @@ actor PipelineCoordinator {
                             print("[tts] chunk \(chunkIndex + 1)/\(total) retrying after -999")
                             let wav = try await TTSClient.shared.synthesize(
                                 text: text,
-                                speaker: speaker,
                                 referenceAudioPath: refPath,
                                 preset: preset
                             )

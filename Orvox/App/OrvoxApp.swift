@@ -9,7 +9,7 @@ struct OrvoxApp: App {
             ContentView()
                 .frame(minWidth: 900, minHeight: 600)
         }
-        .defaultSize(width: 1100, height: 720)
+        .defaultSize(width: 900, height: 600)
         .commands {
             CommandGroup(replacing: .newItem) {}
         }

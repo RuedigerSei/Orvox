@@ -7,7 +7,10 @@ struct ConvertView: View {
         let raw = UserDefaults.standard.string(forKey: "defaultPreset") ?? AudioPreset.audiobook.rawValue
         return AudioPreset(rawValue: raw) ?? .audiobook
     }()
-    @State private var selectedVoiceID: UUID? = nil
+    @State private var selectedVoiceID: UUID? = {
+        let stored = UserDefaults.standard.string(forKey: "defaultVoiceProfileID") ?? ""
+        return stored.isEmpty ? nil : UUID(uuidString: stored)
+    }()
     @State private var isRunning = false
 
     // Jobs belonging to this view session (not persisted ones)
@@ -38,7 +41,7 @@ struct ConvertView: View {
                 Picker("", selection: $selectedVoiceID) {
                     Text("Voice: Default").tag(Optional<UUID>(nil))
                     Divider()
-                    ForEach(voiceStore.profiles.filter { !$0.isBuiltIn }) { p in
+                    ForEach(voiceStore.profiles) { p in
                         Text(p.name).tag(Optional(p.id))
                     }
                 }

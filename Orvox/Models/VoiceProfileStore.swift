@@ -7,7 +7,7 @@ import Observation
 final class VoiceProfileStore {
     static let shared = VoiceProfileStore()
 
-    var profiles: [VoiceProfile] = [.builtIn]
+    var profiles: [VoiceProfile] = []
 
     private let voicesDir: URL
 
@@ -56,14 +56,13 @@ final class VoiceProfileStore {
     }
 
     private func persist() {
-        let custom = profiles.filter { !$0.isBuiltIn }
-        guard let data = try? JSONEncoder().encode(custom) else { return }
+        guard let data = try? JSONEncoder().encode(profiles) else { return }
         UserDefaults.standard.set(data, forKey: "voice_profiles_v1")
     }
 
     private func load() {
         guard let data = UserDefaults.standard.data(forKey: "voice_profiles_v1"),
               let decoded = try? JSONDecoder().decode([VoiceProfile].self, from: data) else { return }
-        profiles = [.builtIn] + decoded
+        profiles = decoded
     }
 }
