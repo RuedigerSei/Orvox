@@ -153,7 +153,7 @@ actor PipelineCoordinator {
 
         let outputURL: URL
         do {
-            outputURL = try outputFileURL(for: job.inputURL)
+            outputURL = try outputFileURL(for: job.inputURL, preset: preset)
             let title = job.inputURL.deletingPathExtension().lastPathComponent
             try await M4AWriter.assemble(
                 wavChunks: orderedWAVs,
@@ -191,7 +191,7 @@ actor PipelineCoordinator {
         await MainActor.run { JobStore.shared.updateProgress(id: id, progress: progress) }
     }
 
-    private func outputFileURL(for inputURL: URL) throws -> URL {
+    private func outputFileURL(for inputURL: URL, preset: AudioPreset) throws -> URL {
         let folder: URL
         let saved = UserDefaults.standard.string(forKey: "outputFolder") ?? ""
         if !saved.isEmpty {
@@ -201,7 +201,8 @@ actor PipelineCoordinator {
             folder = docs.appendingPathComponent("Orvox")
         }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let name = inputURL.deletingPathExtension().lastPathComponent + ".m4a"
+        let ext = preset == .audiobook ? "m4b" : "m4a"
+        let name = inputURL.deletingPathExtension().lastPathComponent + "." + ext
         return folder.appendingPathComponent(name)
     }
 }

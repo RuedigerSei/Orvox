@@ -43,6 +43,8 @@ struct ChunkSplitter {
                 if let chapter = detectChapter(line: trimmed) {
                     flush()
                     currentChapterTitle = chapter
+                    currentParts.append(chapter)
+                    currentTokenCount += max(1, chapter.split(separator: " ").count)
                     return true
                 }
             }

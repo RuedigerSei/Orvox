@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		02811F3B6596E43F723508A0 /* PipelineCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A6C72D5FDEE2BA026306F8 /* PipelineCoordinator.swift */; };
 		050985888460754BA5FE14BA /* VoiceImportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 417EC0F75E7F322490ED55C5 /* VoiceImportSheet.swift */; };
+		072481F02FC4CE1C009A1CA8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 072481EF2FC4CE1C009A1CA8 /* Assets.xcassets */; };
 		076EA114508CABF02474CF74 /* VoiceProfileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48F5E05643BC49BAD0E93664 /* VoiceProfileStore.swift */; };
 		0F0849CAF78EBF9D9EF3F2D8 /* ChunkSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6BF8CC5C62B7926BE6C30B9 /* ChunkSplitter.swift */; };
 		156C103261A476EA2F9C723E /* ModelSize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BA41B51ED4A8816F9AB6019 /* ModelSize.swift */; };
@@ -41,6 +42,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		072481EF2FC4CE1C009A1CA8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0939235FFD780A5B54AD4C17 /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
 		115537B717BC6527060F01A6 /* M4AWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = M4AWriter.swift; sourceTree = "<group>"; };
 		1E2813885BDB12F78C998872 /* BuiltInVoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuiltInVoice.swift; sourceTree = "<group>"; };
@@ -178,6 +180,7 @@
 		766A217CA53A3D6AC786E475 = {
 			isa = PBXGroup;
 			children = (
+				072481EF2FC4CE1C009A1CA8 /* Assets.xcassets */,
 				2035511647744E5F581C9229 /* Orvox */,
 				17FCEA63FA891926721F41A5 /* Frameworks */,
 				15DD07D49F0BB5E88B9C6B55 /* Products */,
@@ -255,6 +258,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C2F9B18C07951CFE957E95B3 /* Assets.xcassets in Resources */,
+				072481F02FC4CE1C009A1CA8 /* Assets.xcassets in Resources */,
 				ECB650CE7744400C63B0C9B3 /* tts_server in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

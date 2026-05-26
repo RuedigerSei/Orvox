@@ -30,6 +30,7 @@ struct JobQueueView: View {
             } else {
                 List(Array(store.jobs.reversed()), id: \.id, selection: $selection) { job in
                     JobRowView(job: job)
+                        .id(job.status)           // forces fresh height + timer when status changes
                         .listRowSeparator(.visible)
                 }
                 .listStyle(.plain)
@@ -261,15 +262,11 @@ struct JobRowView: View {
 
 private struct ElapsedTimerText: View {
     @State private var elapsed: Int = 0
+    private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         Text(formatted)
-            .task {
-                while !Task.isCancelled {
-                    try? await Task.sleep(for: .seconds(1))
-                    elapsed += 1
-                }
-            }
+            .onReceive(ticker) { _ in elapsed += 1 }
     }
 
     private var formatted: String {
