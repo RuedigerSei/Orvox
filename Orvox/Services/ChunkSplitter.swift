@@ -36,6 +36,9 @@ struct ChunkSplitter {
             let sentence = String(text[range]).trimmingCharacters(in: .whitespacesAndNewlines)
             guard !sentence.isEmpty else { return true }
 
+            // Drop decorative separators (— — —, * * *, ···, etc.): no letters → no speech.
+            guard sentence.contains(where: { $0.isLetter }) else { return true }
+
             // Check each line of the sentence for a chapter heading
             let lines = sentence.components(separatedBy: .newlines)
             for line in lines {
