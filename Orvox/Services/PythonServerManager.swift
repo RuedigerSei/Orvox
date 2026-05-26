@@ -6,18 +6,24 @@ final class PythonServerManager: @unchecked Sendable {
     private var process: Process?
     private(set) var isRunning = false
     private let port = 11435
+    private var launchTime: Date?
 
     private init() {}
 
     func start() async {
         guard process == nil else { return }
 
-        // If something is already answering on this port (e.g. a leftover dev server),
-        // adopt it instead of launching a duplicate that would fail to bind.
+        // If something healthy is already on this port, adopt it.
         if await checkHealth() {
             print("[PythonServerManager] adopted existing server on port \(port)")
             return
         }
+
+        // No healthy server found — evict anything that might still be holding the port
+        // (crashed server, previous run that didn't clean up, etc.).
+        killOrphanedServer()
+        // Brief pause for the OS to release the port after SIGKILL.
+        try? await Task.sleep(nanoseconds: 500_000_000)
 
         guard let scriptURL = serverScriptURL() else {
             print("[PythonServerManager] tts_server/server.py not found in bundle")
@@ -44,8 +50,16 @@ final class PythonServerManager: @unchecked Sendable {
             guard let self else { return }
             let code = proc.terminationStatus
             print("[PythonServerManager] server exited (code \(code))")
-            // Only restart if it wasn't a deliberate stop (stop() sets process = nil first).
+            // Don't restart if stop() was called (process already nil) or if the
+            // server died on startup (uptime < 10 s = bind error, missing dep, etc.).
             guard self.process != nil else { return }
+            let uptime = self.launchTime.map { Date().timeIntervalSince($0) } ?? 0
+            guard uptime > 10 else {
+                print("[PythonServerManager] server died on startup (uptime \(Int(uptime))s) — not restarting")
+                self.process = nil
+                self.isRunning = false
+                return
+            }
             self.process = nil
             self.isRunning = false
             Task { await self.start() }
@@ -53,25 +67,33 @@ final class PythonServerManager: @unchecked Sendable {
 
         do {
             try proc.run()
+            launchTime = Date()
             process = proc
         } catch {
             print("[PythonServerManager] launch failed: \(error)")
             return
         }
 
-        await waitForHealth()
+        Task { await self.waitForHealth() }
     }
 
     func stop() {
-        // Clear process first so the terminationHandler knows this was intentional.
+        // Kill the managed process and any orphaned server still holding the port
+        // (e.g. a previously adopted server that we didn't launch ourselves).
         let p = process
         process = nil
         isRunning = false
         p?.terminate()
+        killOrphanedServer()
+    }
+
+    func restart() async {
+        stop()
+        await start()
     }
 
     func checkHealth() async -> Bool {
-        guard let url = URL(string: "http://localhost:\(port)/health") else { return false }
+        guard let url = URL(string: "http://127.0.0.1:\(port)/health") else { return false }
         do {
             let (_, resp) = try await URLSession.shared.data(from: url)
             let ok = (resp as? HTTPURLResponse)?.statusCode == 200
@@ -84,6 +106,15 @@ final class PythonServerManager: @unchecked Sendable {
     }
 
     // MARK: - Private
+
+    private func killOrphanedServer() {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/sh")
+        task.arguments = ["-c", "lsof -ti:\(port) | xargs kill -9 2>/dev/null; true"]
+        task.standardOutput = FileHandle.nullDevice
+        task.standardError  = FileHandle.nullDevice
+        try? task.run()
+    }
 
     private func serverScriptURL() -> URL? {
         // Prefer venv-adjacent server if present
@@ -123,7 +154,8 @@ final class PythonServerManager: @unchecked Sendable {
 
         let existing = env["PYTHONPATH"] ?? ""
         env["PYTHONPATH"] = existing.isEmpty ? serverDir.path : "\(serverDir.path):\(existing)"
-        env["TTS_PORT"] = "\(port)"
+        env["TTS_PORT"]     = "\(port)"
+        env["TTS_BACKEND"]  = UserDefaults.standard.string(forKey: "ttsBackend") ?? "mlx"
         return env
     }
 

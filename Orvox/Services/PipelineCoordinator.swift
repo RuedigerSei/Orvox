@@ -55,7 +55,7 @@ actor PipelineCoordinator {
 
         // ── 3. TTS in parallel ────────────────────────────────
         let concurrency = max(1, min(8, UserDefaults.standard.integer(forKey: "concurrentChunks") > 0
-            ? UserDefaults.standard.integer(forKey: "concurrentChunks") : 3))
+            ? UserDefaults.standard.integer(forKey: "concurrentChunks") : 2))
         let preset = job.preset
         let total  = chunks.count
 
@@ -118,7 +118,7 @@ actor PipelineCoordinator {
 
                     group.addTask {
                         let t0 = Date()
-                        print("[tts] chunk \(chunkIndex)/\(total) start (\(wordCount) words)")
+                        print("[tts] chunk \(chunkIndex + 1)/\(total) start (\(wordCount) words)")
                         do {
                             let wav = try await TTSClient.shared.synthesize(
                                 text: text,
@@ -127,11 +127,25 @@ actor PipelineCoordinator {
                                 preset: preset
                             )
                             let elapsed = Date().timeIntervalSince(t0)
-                            print(String(format: "[tts] chunk %d done in %.1fs (%d bytes)", chunkIndex, elapsed, wav.count))
+                            print(String(format: "[tts] chunk %d/%d done in %.1fs (%d bytes)", chunkIndex + 1, total, elapsed, wav.count))
+                            return (chunkIndex, wav)
+                        } catch let urlErr as URLError where urlErr.code == .cancelled {
+                            // URLError -999 on first connection (IPv4/IPv6 race on cold start); retry once.
+                            try? await Task.sleep(nanoseconds: 1_000_000_000)
+                            try Task.checkCancellation()
+                            print("[tts] chunk \(chunkIndex + 1)/\(total) retrying after -999")
+                            let wav = try await TTSClient.shared.synthesize(
+                                text: text,
+                                speaker: speaker,
+                                referenceAudioPath: refPath,
+                                preset: preset
+                            )
+                            let elapsed = Date().timeIntervalSince(t0)
+                            print(String(format: "[tts] chunk %d/%d done (retry) in %.1fs (%d bytes)", chunkIndex + 1, total, elapsed, wav.count))
                             return (chunkIndex, wav)
                         } catch {
                             let elapsed = Date().timeIntervalSince(t0)
-                            print(String(format: "[tts] chunk %d FAILED after %.1fs — %@", chunkIndex, elapsed, String(describing: error)))
+                            print(String(format: "[tts] chunk %d/%d FAILED after %.1fs — %@", chunkIndex + 1, total, elapsed, String(describing: error)))
                             throw error
                         }
                     }

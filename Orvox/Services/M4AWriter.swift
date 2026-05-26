@@ -173,12 +173,17 @@ struct M4AWriter {
 
     private static func writeChapterCSV(markers: [ChapterMarker], near outputURL: URL) throws {
         let csvURL = outputURL.deletingPathExtension().appendingPathExtension("chapters.csv")
-        var lines = ["title,timestamp_seconds"]
+        var lines = ["title,timestamp"]
         for m in markers {
             let safe = m.title.replacingOccurrences(of: "\"", with: "\"\"")
-            lines.append("\"\(safe)\",\(String(format: "%.3f", m.timestamp))")
+            lines.append("\"\(safe)\",\(hhmmss(m.timestamp))")
         }
         try lines.joined(separator: "\n").write(to: csvURL, atomically: true, encoding: .utf8)
+    }
+
+    private static func hhmmss(_ seconds: TimeInterval) -> String {
+        let t = Int(max(0, seconds))
+        return String(format: "%02d:%02d:%02d", t / 3600, (t % 3600) / 60, t % 60)
     }
 
     /// Returns the playback duration of a WAV blob by reading its RIFF header.
@@ -319,7 +324,8 @@ struct M4AWriter {
             let nextTS = i + 1 < markers.count ? markers[i+1].timestamp : audioDur
             sttsDeltas.append(max(1, Int(round((nextTS - m.timestamp) * Double(mediaTK)))))
             var s = Data()
-            let b = [UInt8](m.title.utf8)
+            let label = "\(hhmmss(m.timestamp)) \(m.title)"
+            let b = [UInt8](label.utf8)
             s.append(UInt8((b.count >> 8) & 0xFF))
             s.append(UInt8( b.count       & 0xFF))
             s.append(contentsOf: b)

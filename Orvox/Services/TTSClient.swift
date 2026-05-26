@@ -57,6 +57,7 @@ actor TTSClient {
     struct HealthInfo: Sendable {
         let ok: Bool
         let device: String?
+        let backend: String?
     }
 
     func health() async -> Bool {
@@ -65,22 +66,28 @@ actor TTSClient {
 
     func healthInfo() async -> HealthInfo {
         let base = serverBaseURL()
-        guard let url = URL(string: "\(base)/health") else { return HealthInfo(ok: false, device: nil) }
+        guard let url = URL(string: "\(base)/health") else {
+            return HealthInfo(ok: false, device: nil, backend: nil)
+        }
         do {
             let (data, resp) = try await session.data(from: url)
             guard (resp as? HTTPURLResponse)?.statusCode == 200 else {
-                return HealthInfo(ok: false, device: nil)
+                return HealthInfo(ok: false, device: nil, backend: nil)
             }
-            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-            let device = json?["device"] as? String
-            return HealthInfo(ok: true, device: device)
+            let json    = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            let device  = json?["device"]  as? String
+            let backend = json?["backend"] as? String
+            return HealthInfo(ok: true, device: device, backend: backend)
         } catch {
-            return HealthInfo(ok: false, device: nil)
+            return HealthInfo(ok: false, device: nil, backend: nil)
         }
     }
 
     private func serverBaseURL() -> String {
-        UserDefaults.standard.string(forKey: "serverURL") ?? "http://localhost:11435"
+        let stored = UserDefaults.standard.string(forKey: "serverURL") ?? "http://127.0.0.1:11435"
+        // Normalize legacy "localhost" to the explicit IPv4 address so URLSession
+        // doesn't try ::1 first, hit ECONNREFUSED, and cancel the first request.
+        return stored.replacingOccurrences(of: "://localhost", with: "://127.0.0.1")
     }
 }
 

@@ -34,8 +34,7 @@ final class VoiceProfileStore {
 
     func absoluteURL(for profile: VoiceProfile) -> URL? {
         guard let filename = profile.sampleAudioFilename else { return nil }
-        let url = voicesDir.appendingPathComponent(filename)
-        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+        return voicesDir.appendingPathComponent(filename)
     }
 
     /// Copies the audio file into the Voices dir and returns a profile with the stored filename.

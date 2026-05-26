@@ -120,14 +120,19 @@ struct JobQueueView: View {
     private func convertReady() {
         isConverting = true
         let jobs = readyJobsToConvert
+        let voiceID = selectedVoiceID  // snapshot at convert time — picker may change mid-batch
         Task {
             for job in jobs {
-                let voiceURL: URL? = {
-                    guard let vid = job.voiceProfileID,
-                          let profile = voiceStore.profiles.first(where: { $0.id == vid })
-                    else { return nil }
-                    return voiceStore.absoluteURL(for: profile)
-                }()
+                // Stamp the current voice picker selection onto the job so the
+                // row display reflects what will actually be synthesised.
+                var updated = job
+                updated.voiceProfileID = voiceID
+                await MainActor.run { store.update(updated) }
+
+                let voiceURL: URL? = voiceID.flatMap { vid in
+                    voiceStore.profiles.first(where: { $0.id == vid })
+                        .flatMap { voiceStore.absoluteURL(for: $0) }
+                }
                 try? await PipelineCoordinator.shared.convert(jobID: job.id, voiceProfileURL: voiceURL)
             }
             await MainActor.run { isConverting = false }
@@ -139,6 +144,16 @@ struct JobQueueView: View {
 
 struct JobRowView: View {
     let job: Job
+    @State private var voiceStore = VoiceProfileStore.shared
+
+    private var voiceDisplayName: String {
+        if let vid = job.voiceProfileID,
+           let profile = voiceStore.profiles.first(where: { $0.id == vid }) {
+            return profile.name
+        }
+        let builtIn = UserDefaults.standard.string(forKey: "defaultBuiltInVoiceName") ?? ""
+        return builtIn.isEmpty ? "Default" : builtIn
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -171,7 +186,7 @@ struct JobRowView: View {
                         Text("Synthesizing…")
                     }
                     if job.chunksTotal > 0 {
-                        Text("· Chunk \(job.chunksCompleted)/\(job.chunksTotal)")
+                        Text("· Chunk \(min(job.chunksCompleted + 1, job.chunksTotal))/\(job.chunksTotal) · \(voiceDisplayName)")
                     }
                     Spacer()
                     ElapsedTimerText()

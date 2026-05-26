@@ -1,16 +1,23 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @AppStorage("serverURL")             private var serverURL             = "http://localhost:11435"
-    @AppStorage("modelSize")             private var modelSizeRaw          = ModelSize.quality.rawValue
-    @AppStorage("concurrentChunks")      private var concurrentChunks      = 3
-    @AppStorage("defaultPreset")         private var defaultPresetRaw      = AudioPreset.audiobook.rawValue
-    @AppStorage("outputFolder")          private var outputFolder          = ""
+    @AppStorage("serverURL")               private var serverURL               = "http://127.0.0.1:11435"
+    @AppStorage("modelSize")               private var modelSizeRaw            = ModelSize.quality.rawValue
+    @AppStorage("concurrentChunks")        private var concurrentChunks        = 2
+    @AppStorage("defaultPreset")           private var defaultPresetRaw        = AudioPreset.audiobook.rawValue
+    @AppStorage("outputFolder")            private var outputFolder            = ""
     @AppStorage("defaultBuiltInVoiceName") private var defaultBuiltInVoiceName = ""
+    @AppStorage("ttsBackend")              private var ttsBackend              = "mlx"
 
     @State private var serverStatus: ServerStatus = .unknown
-    @State private var inferenceDevice: String? = nil
+    @State private var serverLabel: String? = nil
     @State private var isCheckingServer = false
+    @State private var isRestarting = false
+    @State private var jobStore = JobStore.shared
+
+    private var isConverting: Bool {
+        jobStore.jobs.contains { $0.status == .converting }
+    }
 
     private var modelSize: ModelSize {
         ModelSize(rawValue: modelSizeRaw) ?? .quality
@@ -32,13 +39,31 @@ struct SettingsView: View {
                     TextField("Server URL", text: $serverURL)
                         .textFieldStyle(.roundedBorder)
                     serverIndicator
-                    if let device = inferenceDevice {
-                        Text(device)
+                    if let label = serverLabel {
+                        Text(label)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if isRestarting {
+                        Text("Restarting…")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     Button("Check") { checkServer() }
-                        .disabled(isCheckingServer)
+                        .disabled(isCheckingServer || isRestarting)
+                }
+
+                Picker("Backend", selection: $ttsBackend) {
+                    Text("PyTorch (CPU)").tag("pytorch")
+                    Text("MLX (Apple Silicon)").tag("mlx")
+                }
+                .disabled(isConverting || isRestarting)
+                .onChange(of: ttsBackend) { _, _ in switchBackend() }
+
+                if isConverting {
+                    Text("Cannot switch backend while a conversion is running.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
                 Picker("Model", selection: $modelSizeRaw) {
@@ -102,7 +127,7 @@ struct SettingsView: View {
             Section("Performance") {
                 Stepper("Concurrent chunks: \(concurrentChunks)",
                         value: $concurrentChunks, in: 1...8)
-                Text("Higher values may improve speed on M-series Macs but increase memory pressure.")
+                Text("PyTorch backend only. MLX uses a single worker; the GPU handles parallelism internally.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -130,10 +155,27 @@ struct SettingsView: View {
         Task {
             let info = await TTSClient.shared.healthInfo()
             await MainActor.run {
-                serverStatus     = info.ok ? .ok : .error
-                inferenceDevice  = info.device
+                serverStatus = info.ok ? .ok : .error
+                if info.ok {
+                    let backendLabel = info.backend == "mlx" ? "MLX" : "PyTorch"
+                    let deviceLabel  = info.device ?? "unknown"
+                    serverLabel = "\(backendLabel) · \(deviceLabel)"
+                } else {
+                    serverLabel = nil
+                }
                 isCheckingServer = false
             }
+        }
+    }
+
+    private func switchBackend() {
+        isRestarting = true
+        serverStatus = .unknown
+        serverLabel  = nil
+        Task {
+            await PythonServerManager.shared.restart()
+            await MainActor.run { isRestarting = false }
+            checkServer()
         }
     }
 
