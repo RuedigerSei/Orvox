@@ -4,6 +4,7 @@ actor PipelineCoordinator {
     static let shared = PipelineCoordinator()
 
     private var activeTasks: [UUID: Task<Void, Error>] = [:]
+    private var crashedJobID: UUID? = nil   // set by health watchdog before cancelling
 
     private init() {}
 
@@ -70,6 +71,29 @@ actor PipelineCoordinator {
         var results: [(index: Int, wav: Data)] = []
         results.reserveCapacity(total)
 
+        // Health watchdog: poll every 20 s; cancel the job after 3 consecutive misses
+        // so we don't wait out the full 900 s URLSession timeout when the server hangs.
+        let watchdog = Task {
+            var failures = 0
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(20))
+                guard !Task.isCancelled else { break }
+                if await TTSClient.shared.health() {
+                    failures = 0
+                } else {
+                    failures += 1
+                    print("[watchdog] server health check failed (\(failures)/3)")
+                    if failures >= 3 {
+                        print("[watchdog] server unreachable — cancelling job \(jobID)")
+                        self.crashedJobID = jobID
+                        self.cancel(jobID: jobID)
+                        break
+                    }
+                }
+            }
+        }
+        defer { watchdog.cancel() }
+
         do {
             try await withThrowingTaskGroup(of: (Int, Data).self) { group in
                 var inFlight = 0
@@ -90,15 +114,26 @@ actor PipelineCoordinator {
                     let text       = chunk.text
                     let refPath    = voiceProfileURL?.path
                     let speaker    = builtInSpeaker
+                    let wordCount  = text.split(separator: " ").count
 
                     group.addTask {
-                        let wav = try await TTSClient.shared.synthesize(
-                            text: text,
-                            speaker: speaker,
-                            referenceAudioPath: refPath,
-                            preset: preset
-                        )
-                        return (chunkIndex, wav)
+                        let t0 = Date()
+                        print("[tts] chunk \(chunkIndex)/\(total) start (\(wordCount) words)")
+                        do {
+                            let wav = try await TTSClient.shared.synthesize(
+                                text: text,
+                                speaker: speaker,
+                                referenceAudioPath: refPath,
+                                preset: preset
+                            )
+                            let elapsed = Date().timeIntervalSince(t0)
+                            print(String(format: "[tts] chunk %d done in %.1fs (%d bytes)", chunkIndex, elapsed, wav.count))
+                            return (chunkIndex, wav)
+                        } catch {
+                            let elapsed = Date().timeIntervalSince(t0)
+                            print(String(format: "[tts] chunk %d FAILED after %.1fs — %@", chunkIndex, elapsed, String(describing: error)))
+                            throw error
+                        }
                     }
                     inFlight += 1
                 }
@@ -111,7 +146,10 @@ actor PipelineCoordinator {
                 }
             }
         } catch is CancellationError {
-            await setStatus(jobID, .failed, errorMessage: "Cancelled")
+            let serverDied = crashedJobID == jobID
+            crashedJobID = nil
+            let msg = serverDied ? "TTS server stopped responding — job cancelled" : "Cancelled"
+            await setStatus(jobID, .failed, errorMessage: msg)
             return
         } catch let urlErr as URLError {
             let msg: String
@@ -121,9 +159,11 @@ actor PipelineCoordinator {
             case .cannotConnectToHost:   msg = "Cannot reach TTS server"
             default:                     msg = urlErr.localizedDescription
             }
+            print("[pipeline] URLError: code=\(urlErr.code.rawValue) \(urlErr.localizedDescription)")
             await setStatus(jobID, .failed, errorMessage: msg)
             return
         } catch {
+            print("[pipeline] error: \(type(of: error)) \(error)")
             await setStatus(jobID, .failed, errorMessage: error.localizedDescription)
             return
         }
