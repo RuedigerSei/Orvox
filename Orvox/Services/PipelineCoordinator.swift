@@ -189,11 +189,20 @@ actor PipelineCoordinator {
         var chunkStartByIdx: [Int: Double] = [:]   // chunk.index → wall-clock start time
         var runningTime:     Double        = 0
 
-        orderedWAVs.reserveCapacity(results.count + titleIndices.count)
+        orderedWAVs.reserveCapacity(results.count + titleIndices.count * 2)
         for (index, wav) in results {
+            // 1 s end-of-chapter gap before each title (except at position 0 —
+            // no leading silence when the book opens cold on a chapter heading).
+            if titleIndices.contains(index) && index > 0 {
+                orderedWAVs.append(silenceWAV)
+                runningTime += 1.0
+            }
+            // Record title start time AFTER the pre-silence so chapter-marker
+            // navigation lands on the spoken title, not on the preceding gap.
             chunkStartByIdx[index] = runningTime
             orderedWAVs.append(wav)
             runningTime += M4AWriter.duration(of: wav)
+            // 1 s post-title gap before the body text begins.
             if titleIndices.contains(index) {
                 orderedWAVs.append(silenceWAV)
                 runningTime += 1.0
