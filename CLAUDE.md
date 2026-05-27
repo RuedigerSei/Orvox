@@ -134,7 +134,7 @@ Chapter markers are injected as a native QuickTime chapter track (text track wit
 - The Python server serialises all MLX work through its single-threaded executor.
 - Multiple Swift chunks can be in-flight simultaneously; the server queues them.
 - **Two-worker parallelism benchmarked (M4):** Sequential 29.3 s vs parallel 24.3 s = 1.21× speedup. Each inference takes ~65% longer when two run in parallel due to unified-memory bandwidth contention. Not worth implementing.
-- **Embedding pre-cache:** Voice clone embedding computation costs ~200–500 ms per synthesis call. For a 64-chunk book that is ~13–32 s total — negligible compared to inference time. Not implemented.
+- **Embedding pre-cache:** Benchmarked: first call costs ~0.55 s (cold file I/O + mel spectrogram + ECAPA-TDNN); subsequent calls cost ~0.02–0.03 s (OS disk cache + warm MLX pipeline). For a 64-chunk book total embedding cost is ~2 s out of ~900 s — under 0.3%. Not worth implementing.
 - **Larger chunks:** Max chunk size is 400 words. Combining short chapters up to 400 words would reduce chunk count but was rejected because precise chapter markers are mandatory — a chapter boundary must always force a chunk split.
 
 ## Key UserDefaults keys
