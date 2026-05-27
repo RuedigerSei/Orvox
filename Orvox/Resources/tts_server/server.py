@@ -182,9 +182,6 @@ def _synth_mlx(body: SynthBody, target_sr: int) -> Response:
     if _mlx_model_size is None:
         raise HTTPException(status_code=503, detail="MLX model not loaded")
 
-    import time
-    from mlx_audio.utils import load_audio as mlx_load_audio
-
     try:
         if body.reference_audio_path:
             p = Path(body.reference_audio_path)
@@ -201,14 +198,6 @@ def _synth_mlx(body: SynthBody, target_sr: int) -> Response:
                 )
             ref_path, ref_text = DEFAULT_REF_AUDIO, DEFAULT_REF_TEXT
 
-        # ── Benchmark: isolate embedding cost ────────────────────────────────
-        t0 = time.perf_counter()
-        _ref_wav = mlx_load_audio(str(ref_path), sample_rate=_mlx_base_obj.sample_rate)
-        _mlx_base_obj.extract_speaker_embedding(_ref_wav)
-        t_embed = time.perf_counter() - t0
-
-        # ── Full synthesis (generate() re-runs embedding internally) ─────────
-        t1 = time.perf_counter()
         results = _mlx_base_obj.generate(
             text=body.text,
             ref_audio=str(ref_path),
@@ -216,13 +205,6 @@ def _synth_mlx(body: SynthBody, target_sr: int) -> Response:
             instruct=body.instruct or None,
         )
         audio, sr = _collect_mlx_audio(results)
-        t_total = time.perf_counter() - t1
-
-        words = len(body.text.split())
-        log.info(
-            "[benchmark] words=%d  embed=%.2fs  synth=%.2fs  infer≈%.2fs",
-            words, t_embed, t_total, t_total - t_embed,
-        )
 
     except HTTPException:
         raise
