@@ -9,7 +9,8 @@ POST /synthesize  → WAV bytes (audio/wav)
                     body: {
                         "text": str,
                         "reference_audio_path": str | null,
-                        "preset": "audiobook" | "podcast"
+                        "preset": "audiobook" | "podcast",
+                        "instruct": str | null   (narration style prompt text)
                     }
                     Falls back to bundled default_voice.wav when reference_audio_path is null.
 """
@@ -137,6 +138,7 @@ class SynthBody(BaseModel):
     text: str
     reference_audio_path: Optional[str] = None
     preset: str = "audiobook"
+    instruct: Optional[str] = None
 
 # ── /health ───────────────────────────────────────────────────────────────────
 
@@ -202,6 +204,7 @@ def _synth_mlx(body: SynthBody, target_sr: int) -> Response:
             text=body.text,
             ref_audio=str(ref_path),
             ref_text=ref_text,
+            instruct=body.instruct or None,
         )
 
         audio, sr = _collect_mlx_audio(results)

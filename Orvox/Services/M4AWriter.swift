@@ -320,6 +320,7 @@ struct M4AWriter {
         let mediaTK = 1000
         var sttsDeltas: [Int] = []
         var textSamples: [Data] = []
+
         for (i, m) in markers.enumerated() {
             let nextTS = i + 1 < markers.count ? markers[i+1].timestamp : audioDur
             sttsDeltas.append(max(1, Int(round((nextTS - m.timestamp) * Double(mediaTK)))))

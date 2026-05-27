@@ -56,8 +56,9 @@ actor PipelineCoordinator {
         // ── 3. TTS in parallel ────────────────────────────────
         let concurrency = max(1, min(8, UserDefaults.standard.integer(forKey: "concurrentChunks") > 0
             ? UserDefaults.standard.integer(forKey: "concurrentChunks") : 2))
-        let preset = job.preset
-        let total  = chunks.count
+        let preset   = job.preset
+        let instruct = job.narrationStyle?.resolvedInstruct
+        let total    = chunks.count
 
         await MainActor.run { JobStore.shared.markStarted(id: jobID, chunksTotal: total) }
 
@@ -115,7 +116,8 @@ actor PipelineCoordinator {
                             let wav = try await TTSClient.shared.synthesize(
                                 text: text,
                                 referenceAudioPath: refPath,
-                                preset: preset
+                                preset: preset,
+                                instruct: instruct
                             )
                             let elapsed = Date().timeIntervalSince(t0)
                             print(String(format: "[tts] chunk %d/%d done in %.1fs (%d bytes)", chunkIndex + 1, total, elapsed, wav.count))
@@ -128,7 +130,8 @@ actor PipelineCoordinator {
                             let wav = try await TTSClient.shared.synthesize(
                                 text: text,
                                 referenceAudioPath: refPath,
-                                preset: preset
+                                preset: preset,
+                                instruct: instruct
                             )
                             let elapsed = Date().timeIntervalSince(t0)
                             print(String(format: "[tts] chunk %d/%d done (retry) in %.1fs (%d bytes)", chunkIndex + 1, total, elapsed, wav.count))

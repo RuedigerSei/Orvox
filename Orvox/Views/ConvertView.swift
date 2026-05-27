@@ -7,6 +7,10 @@ struct ConvertView: View {
         let raw = UserDefaults.standard.string(forKey: "defaultPreset") ?? AudioPreset.audiobook.rawValue
         return AudioPreset(rawValue: raw) ?? .audiobook
     }()
+    @State private var selectedStyle: NarrationStyle? = {
+        let raw = UserDefaults.standard.string(forKey: "defaultNarrationStyle") ?? ""
+        return NarrationStyle(rawValue: raw)
+    }()
     @State private var selectedVoiceID: UUID? = {
         let stored = UserDefaults.standard.string(forKey: "defaultVoiceProfileID") ?? ""
         return stored.isEmpty ? nil : UUID(uuidString: stored)
@@ -36,6 +40,16 @@ struct ConvertView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 230)
+                .labelsHidden()
+
+                Picker("", selection: $selectedStyle) {
+                    Text("Style: None").tag(Optional<NarrationStyle>(nil))
+                    Divider()
+                    ForEach(NarrationStyle.allCases) { s in
+                        Text(s.displayName).tag(Optional(s))
+                    }
+                }
+                .frame(width: 200)
                 .labelsHidden()
 
                 Picker("", selection: $selectedVoiceID) {
@@ -89,9 +103,13 @@ struct ConvertView: View {
             else { return nil }
             return voiceStore.absoluteURL(for: profile)
         }()
+        let style = selectedStyle
 
         Task {
             for job in jobs {
+                var updated = job
+                updated.narrationStyle = style
+                jobStore.update(updated)
                 try? await PipelineCoordinator.shared.convert(jobID: job.id, voiceProfileURL: voiceURL)
             }
             await MainActor.run { isRunning = false }

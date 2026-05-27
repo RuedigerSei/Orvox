@@ -9,6 +9,10 @@ struct JobQueueView: View {
         let raw = UserDefaults.standard.string(forKey: "defaultPreset") ?? AudioPreset.audiobook.rawValue
         return AudioPreset(rawValue: raw) ?? .audiobook
     }()
+    @State private var selectedStyle: NarrationStyle? = {
+        let raw = UserDefaults.standard.string(forKey: "defaultNarrationStyle") ?? ""
+        return NarrationStyle(rawValue: raw)
+    }()
     @State private var selectedVoiceID: UUID? = {
         let stored = UserDefaults.standard.string(forKey: "defaultVoiceProfileID") ?? ""
         return stored.isEmpty ? nil : UUID(uuidString: stored)
@@ -50,6 +54,16 @@ struct JobQueueView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 230)
+                .labelsHidden()
+
+                Picker("", selection: $selectedStyle) {
+                    Text("Style: None").tag(Optional<NarrationStyle>(nil))
+                    Divider()
+                    ForEach(NarrationStyle.allCases) { s in
+                        Text(s.displayName).tag(Optional(s))
+                    }
+                }
+                .frame(width: 200)
                 .labelsHidden()
 
                 Picker("", selection: $selectedVoiceID) {
@@ -122,14 +136,14 @@ struct JobQueueView: View {
 
     private func convertReady() {
         isConverting = true
-        let jobs = readyJobsToConvert
-        let voiceID = selectedVoiceID  // snapshot at convert time — picker may change mid-batch
+        let jobs    = readyJobsToConvert
+        let voiceID = selectedVoiceID   // snapshot at convert time — picker may change mid-batch
+        let style   = selectedStyle
         Task {
             for job in jobs {
-                // Stamp the current voice picker selection onto the job so the
-                // row display reflects what will actually be synthesised.
                 var updated = job
-                updated.voiceProfileID = voiceID
+                updated.voiceProfileID  = voiceID
+                updated.narrationStyle  = style
                 await MainActor.run { store.update(updated) }
 
                 let voiceURL: URL? = voiceID.flatMap { vid in

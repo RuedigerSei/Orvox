@@ -18,13 +18,14 @@ struct Job: Identifiable, Codable, Equatable, Sendable {
     var chapterMarkers: [ChapterMarker]
     var createdAt: Date
     var preset: AudioPreset
+    var narrationStyle: NarrationStyle?
     var voiceProfileID: UUID?
     var chunksCompleted: Int
     var chunksTotal: Int
     var startedAt: Date?
     var finishedAt: Date?
 
-    init(inputURL: URL, preset: AudioPreset = .audiobook, voiceProfileID: UUID? = nil) {
+    init(inputURL: URL, preset: AudioPreset = .audiobook, narrationStyle: NarrationStyle? = nil, voiceProfileID: UUID? = nil) {
         self.id               = UUID()
         self.inputURL         = inputURL
         self.outputURL        = nil
@@ -35,6 +36,7 @@ struct Job: Identifiable, Codable, Equatable, Sendable {
         self.chapterMarkers   = []
         self.createdAt        = Date()
         self.preset           = preset
+        self.narrationStyle   = narrationStyle
         self.voiceProfileID   = voiceProfileID
         self.chunksCompleted  = 0
         self.chunksTotal      = 0

@@ -7,6 +7,7 @@ struct SettingsView: View {
     @AppStorage("defaultPreset")           private var defaultPresetRaw        = AudioPreset.audiobook.rawValue
     @AppStorage("outputFolder")            private var outputFolder            = ""
     @AppStorage("defaultVoiceProfileID")   private var defaultVoiceProfileID   = ""
+    @AppStorage("defaultNarrationStyle")   private var defaultNarrationStyle   = ""
 
     @State private var voiceStore = VoiceProfileStore.shared
     @State private var serverStatus: ServerStatus = .unknown
@@ -55,6 +56,14 @@ struct SettingsView: View {
                     }
                 }
 
+                Picker("Default style", selection: $defaultNarrationStyle) {
+                    Text("None").tag("")
+                    Divider()
+                    ForEach(NarrationStyle.allCases) { s in
+                        Text(s.displayName).tag(s.rawValue)
+                    }
+                }
+
                 Picker("Default voice", selection: $defaultVoiceProfileID) {
                     Text("Bundled Clone").tag("")
                     if !voiceStore.profiles.isEmpty { Divider() }
@@ -76,7 +85,18 @@ struct SettingsView: View {
                 }
             }
 
-            // ── Concurrency ──────────────────────────────────────
+            // ── Narration Prompts ────────────────────────────────
+            Section("Narration Prompts") {
+                Text("These prompts guide the TTS model's speaking style. Edits are saved automatically and persist across launches.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                ForEach(NarrationStyle.allCases) { style in
+                    NarrationPromptRow(style: style)
+                }
+            }
+
+            // ── Performance ──────────────────────────────────────
             Section("Performance") {
                 Stepper("Concurrent chunks: \(concurrentChunks)",
                         value: $concurrentChunks, in: 1...8)
@@ -135,4 +155,71 @@ struct SettingsView: View {
     }
 
     enum ServerStatus { case unknown, ok, error }
+}
+
+// MARK: - Narration prompt row
+
+private struct NarrationPromptRow: View {
+    let style: NarrationStyle
+
+    @State private var text: String = ""
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) { isExpanded.toggle() }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 12)
+                        Text(style.displayName)
+                            .font(.system(size: 13, weight: .medium))
+                        if style.isCustomised {
+                            Text("edited")
+                                .font(.system(size: 10, weight: .semibold))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.accentColor.opacity(0.12))
+                                .foregroundStyle(Color.accentColor)
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                if style.isCustomised {
+                    Button("Reset") {
+                        style.resetToDefault()
+                        text = style.defaultInstruct
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+            }
+
+            if isExpanded {
+                TextEditor(text: $text)
+                    .font(.system(size: 12))
+                    .frame(minHeight: 72)
+                    .padding(6)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1)
+                    )
+                    .onChange(of: text) { _, newValue in
+                        style.saveCustomInstruct(newValue)
+                    }
+            }
+        }
+        .padding(.vertical, 2)
+        .onAppear { text = style.resolvedInstruct }
+    }
 }
