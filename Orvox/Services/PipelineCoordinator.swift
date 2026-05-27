@@ -175,23 +175,37 @@ actor PipelineCoordinator {
             return
         }
 
-        // ── 4. Order WAV chunks ───────────────────────────────
+        // ── 4. Order WAV chunks + insert 1 s silence after each title ────
         results.sort { $0.index < $1.index }
-        let orderedWAVs = results.map { $0.wav }
 
-        // ── 5. Build chapter markers ──────────────────────────
-        // Accumulate the duration of each chunk so we know the wall-clock
-        // start time of every chunk in the final concatenated audio.
-        var chunkStartTimes: [Double] = []
-        var runningTime: Double = 0
-        for wav in orderedWAVs {
-            chunkStartTimes.append(runningTime)
+        // Chapter-title chunks are standalone (chapterTitle != nil); a 1-second
+        // silence WAV is appended after each so there is a clear pause in the
+        // audio before the body text begins.
+        let titleIndices   = Set(chunks.filter { $0.chapterTitle != nil }.map { $0.index })
+        let silenceSR      = Int32(preset == .audiobook ? 16_000 : 22_050)
+        let silenceWAV     = M4AWriter.silenceWAV(durationSeconds: 1.0, sampleRate: silenceSR)
+
+        var orderedWAVs:     [Data]        = []
+        var chunkStartByIdx: [Int: Double] = [:]   // chunk.index → wall-clock start time
+        var runningTime:     Double        = 0
+
+        orderedWAVs.reserveCapacity(results.count + titleIndices.count)
+        for (index, wav) in results {
+            chunkStartByIdx[index] = runningTime
+            orderedWAVs.append(wav)
             runningTime += M4AWriter.duration(of: wav)
+            if titleIndices.contains(index) {
+                orderedWAVs.append(silenceWAV)
+                runningTime += 1.0
+            }
         }
 
+        // ── 5. Build chapter markers ──────────────────────────
+        // Timestamps come from the accumulated start times above, which already
+        // account for the silence padding inserted after each title chunk.
         let chapterMarkers: [ChapterMarker] = chunks.compactMap { chunk in
             guard let title = chunk.chapterTitle else { return nil }
-            let ts = chunk.index < chunkStartTimes.count ? chunkStartTimes[chunk.index] : 0
+            let ts = chunkStartByIdx[chunk.index] ?? 0
             return ChapterMarker(title: title, timestamp: ts, chunkIndex: chunk.index)
         }
 

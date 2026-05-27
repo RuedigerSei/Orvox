@@ -580,6 +580,17 @@ struct M4AWriter {
         return d
     }
 
+    /// Returns a float-32 mono WAV blob containing `durationSeconds` of digital silence.
+    /// The format matches what the TTS server produces (IEEE-float, mono, same sample rate).
+    static func silenceWAV(durationSeconds: Double, sampleRate: Int32) -> Data {
+        let numSamples = Int(durationSeconds * Double(sampleRate))
+        let dataSize   = numSamples * 4        // 32-bit float, 1 channel
+        var wav = makeWAVHeader(sampleRate: sampleRate, channels: 1, bitsPerSample: 32,
+                                dataSize: dataSize)
+        wav.append(Data(count: dataSize))      // zero-filled = silence
+        return wav
+    }
+
     private static func makeWAVHeader(sampleRate: Int32, channels: Int16, bitsPerSample: Int16, dataSize: Int) -> Data {
         var d = Data()
         let byteRate = Int32(sampleRate) * Int32(channels) * Int32(bitsPerSample) / 8
