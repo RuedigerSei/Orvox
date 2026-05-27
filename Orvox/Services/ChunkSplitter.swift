@@ -80,9 +80,6 @@ struct ChunkSplitter {
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !sentence.isEmpty else { return true }
 
-                // Drop decorative separators (— — —, * * *, etc.): no letters → no speech.
-                guard sentence.contains(where: { $0.isLetter }) else { return true }
-
                 let est = max(1, sentence.split(separator: " ").count)
                 if tokenCount + est > maxTokens { flush() }
                 parts.append(sentence)
