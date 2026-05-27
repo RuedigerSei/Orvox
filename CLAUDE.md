@@ -63,7 +63,7 @@ Drop file → TextExtractor → ChunkSplitter → PipelineCoordinator
 
 - **`PipelineCoordinator`** (actor) — orchestrates one job at a time. Drives a `withThrowingTaskGroup` that sends chunks concurrently to the TTS server (concurrency capped by `UserDefaults "concurrentChunks"`). Contains a health watchdog that polls every 20 s and cancels the job after 3 misses (~60 s vs the 15-min URLSession timeout). Retries once on `URLError.cancelled` (-999), which occurs on cold start due to IPv4/IPv6 racing.
 
-- **`ChunkSplitter`** — splits extracted text into `TextChunk` objects (max 400 words) using `NLTokenizer`. Chapter headings (`Chapter N`, `CHAPTER N`, `Part N`, `N.`) always force a chunk boundary and carry a `chapterTitle` for the chapter track. Decorative separators (lines with no letters) are dropped.
+- **`ChunkSplitter`** — two-pass splitter. Pass 1 detects chapter headings at line level (before `NLTokenizer` runs) so that patterns like `1. The Reach of Explanations` are not split by the sentence tokenizer. Pass 2 accumulates sentences (max 400 words per chunk) within each segment. Each chapter heading is emitted as its own standalone `TextChunk` (text = heading, chapterTitle = heading) so the model speaks it as a complete utterance; the natural trailing silence creates an audible pause before the body text begins. Body chunks carry `chapterTitle = nil`.
 
 - **`TTSClient`** (actor) — HTTP client with 15-min per-request / 2-h per-resource timeouts. Always uses `127.0.0.1` (never `localhost`) to avoid IPv6 connection races.
 
@@ -83,7 +83,7 @@ Drop file → TextExtractor → ChunkSplitter → PipelineCoordinator
 
 FastAPI app with three endpoints: `GET /health`, `POST /config`, `POST /synthesize`.
 
-**Critical constraint — MLX thread affinity:** MLX Metal streams are thread-local. The model must be loaded and used on the **same thread**. This is enforced with a `ThreadPoolExecutor(max_workers=1)`: both model loading (at startup via `lifespan`) and every inference call are dispatched through this single executor via `loop.run_in_executor`. Never move MLX operations off this executor.
+**Critical constraint — MLX thread affinity:** MLX Metal streams are thread-local. The model must be loaded and used on the **same thread**. This is enforced with a `ThreadPoolExecutor(max_workers=2)`: both model loading (at startup via `lifespan`) and every inference call are dispatched through this executor via `loop.run_in_executor`. Each inference runs entirely on one thread; the two workers allow two independent inferences to run simultaneously. Never move MLX operations off this executor, and never increase `max_workers` beyond 2 without re-benchmarking (unified-memory bandwidth is a bottleneck).
 
 **mlx-audio API:**
 ```python
@@ -126,14 +126,16 @@ Chapter markers are injected as a native QuickTime chapter track (text track wit
 |---|---|
 | **Pre-roll empty sample** — prepend a zero-length text sample of duration = preamble length to the chapter track | Fixes the offset but causes off-by-one: the empty sample is counted as "Chapter 1" by audiobook players, shifting all real chapters up by one. |
 | **Void edit list entry** — use a 2-entry elst with `media_time = 0xFFFFFFFF` (-1) for the preamble gap | Theoretically correct per MP4 spec; reverted together with the standalone-chunk change before it could be tested independently. |
-| **Standalone chapter-title chunks** — emit each chapter heading as its own 1-sentence TTS chunk so it synthesises separately (natural trailing silence = pause before body text) | Reverted: adds one extra TTS HTTP round-trip per chapter heading, dramatically increasing processing time for books with many chapters. |
+
+**Current approach — standalone chapter-title chunks + two-worker server:**
+Each chapter heading is emitted as its own 1-sentence TTS chunk (natural trailing silence = pause before body text). The extra per-heading round-trip (~5–8 s each) is hidden by running two server workers simultaneously: the short title chunk and the longer body chunk of the next section execute in parallel. Benchmarked M4 speedup: 1.21× overall (each individual inference runs ~65% slower under contention, but two run at once). For a 64-chapter book this eliminates ~6.4 min of added latency.
 
 ### Concurrency model
 
 - Swift actors (`PipelineCoordinator`, `TTSClient`, `JobStore`) handle Swift-side thread safety.
-- The Python server serialises all MLX work through its single-threaded executor.
-- Multiple Swift chunks can be in-flight simultaneously; the server queues them.
-- **Two-worker parallelism benchmarked (M4):** Sequential 29.3 s vs parallel 24.3 s = 1.21× speedup. Each inference takes ~65% longer when two run in parallel due to unified-memory bandwidth contention. Not worth implementing.
+- The Python server runs MLX work through a two-worker `ThreadPoolExecutor`; each inference is pinned to one thread (MLX Metal stream thread-affinity). Two independent inferences can run simultaneously.
+- Multiple Swift chunks can be in-flight simultaneously (capped by `concurrentChunks` UserDefault, default 2); the server processes up to 2 at a time.
+- **Two-worker parallelism (M4 benchmark):** Sequential 29.3 s vs parallel 24.3 s = 1.21× overall speedup. Each individual inference takes ~65% longer under contention (unified-memory bandwidth). Implemented to offset the cost of standalone chapter-title chunks.
 - **Embedding pre-cache:** Benchmarked: first call costs ~0.55 s (cold file I/O + mel spectrogram + ECAPA-TDNN); subsequent calls cost ~0.02–0.03 s (OS disk cache + warm MLX pipeline). For a 64-chunk book total embedding cost is ~2 s out of ~900 s — under 0.3%. Not worth implementing.
 - **Larger chunks:** Max chunk size is 400 words. Combining short chapters up to 400 words would reduce chunk count but was rejected because precise chapter markers are mandatory — a chapter boundary must always force a chunk split.
 

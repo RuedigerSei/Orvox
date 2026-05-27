@@ -44,33 +44,33 @@ struct ChunkSplitter {
 
         // ── Pass 2: sentence-level accumulation within each segment ──────────
         for segment in segments {
+            // Emit the chapter title as its own standalone chunk so the model
+            // speaks it as a complete utterance (natural trailing silence acts
+            // as a pause before the body text begins).
+            if let heading = segment.chapterTitle {
+                result.append(TextChunk(index: chunkIndex, text: heading,
+                                        chapterTitle: heading))
+                chunkIndex += 1
+            }
+
             var parts:      [String] = []
             var tokenCount: Int      = 0
-            var firstChunk           = true
 
             func flush() {
                 guard !parts.isEmpty else { return }
                 let combined = parts.joined(separator: " ")
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !combined.isEmpty else { parts = []; tokenCount = 0; return }
-                let title = firstChunk ? segment.chapterTitle : nil
                 result.append(TextChunk(index: chunkIndex, text: combined,
-                                        chapterTitle: title))
+                                        chapterTitle: nil))
                 chunkIndex += 1
-                firstChunk  = false
                 parts       = []
                 tokenCount  = 0
             }
 
-            // Seed the first chunk with the chapter heading when present.
-            if let heading = segment.chapterTitle {
-                parts.append(heading)
-                tokenCount = max(1, heading.split(separator: " ").count)
-            }
-
             let body = segment.body
             guard !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                flush(); continue
+                continue
             }
 
             let tokenizer = NLTokenizer(unit: .sentence)

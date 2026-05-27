@@ -55,9 +55,11 @@ DEFAULT_REF_TEXT  = (
 
 # ── MLX state ─────────────────────────────────────────────────────────────────
 
-# Single-threaded executor: MLX Metal streams are thread-local, so every MLX
-# operation (load + inference) must run on the same thread.
-_mlx_executor    = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+# Two-worker executor: each inference runs entirely on one thread (MLX Metal
+# streams are thread-local), but two independent inferences can run on two
+# separate threads simultaneously. Short chapter-title chunks pair with long
+# body chunks, hiding their cost behind the body's processing window.
+_mlx_executor    = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 _mlx_base_obj:   Optional[Any] = None
 _mlx_model_size: Optional[str] = None
 _mlx_load_error: Optional[str] = None
